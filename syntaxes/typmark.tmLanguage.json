@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TypMark",
+  "scopeName": "source.typmark",
+  "patterns": [
+    {
+      "name": "markup.heading.typmark",
+      "match": "^(#{1,6})\\s+.+$"
+    },
+    {
+      "name": "markup.quote.typmark",
+      "match": "^>\\s+.+$"
+    },
+    {
+      "name": "markup.list.typmark",
+      "match": "^(\\s*)([-*+]\\s+|\\d+\\.\\s+).+$"
+    },
+    {
+      "name": "markup.raw.inline.typmark",
+      "match": "`[^`]+`"
+    },
+    {
+      "name": "markup.math.inline.typmark",
+      "match": "\\$[^$]+\\$"
+    },
+    {
+      "name": "markup.math.block.typmark",
+      "begin": "^\\$\\$",
+      "end": "^\\$\\$"
+    },
+    {
+      "name": "markup.box.typmark",
+      "match": "^:::\\s+.+$"
+    },
+    {
+      "name": "markup.reference.typmark",
+      "match": "@\\w+[\\w-]*" 
+    }
+  ]
+}
