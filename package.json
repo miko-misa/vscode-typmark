@@ -12,7 +12,8 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onLanguage:typmark"
+    "onLanguage:typmark",
+    "onCommand:typmark.showPreview"
   ],
   "contributes": {
     "languages": [
@@ -54,7 +55,13 @@
           "description": "Check GitHub Releases for newer VSIX versions and notify."
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "typmark.showPreview",
+        "title": "TypMark: Show Preview"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
@@ -62,6 +69,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "@types/node": "^20.11.0"
   }
 }
