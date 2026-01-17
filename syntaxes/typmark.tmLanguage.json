@@ -16,12 +16,9 @@
       "match": "^(\\s*)([-*+]\\s+|\\d+\\.\\s+).+$"
     },
     {
-      "name": "markup.raw.inline.typmark",
-      "match": "`[^`]+`"
-    },
-    {
-      "name": "markup.math.inline.typmark",
-      "match": "\\$[^$]+\\$"
+      "name": "markup.raw.block.typmark",
+      "begin": "^```+.*$",
+      "end": "^```+$"
     },
     {
       "name": "markup.math.block.typmark",
@@ -30,11 +27,24 @@
     },
     {
       "name": "markup.box.typmark",
-      "match": "^:::\\s+.+$"
+      "begin": "^:::\\s+.*$",
+      "end": "^:::$"
+    },
+    {
+      "name": "markup.attribute.typmark",
+      "match": "\\{#.*?\\}"
     },
     {
       "name": "markup.reference.typmark",
-      "match": "@\\w+[\\w-]*" 
+      "match": "@[A-Za-z0-9_-]+(\\[[^\\]]+\\])?"
+    },
+    {
+      "name": "markup.raw.inline.typmark",
+      "match": "`[^`]+`"
+    },
+    {
+      "name": "markup.math.inline.typmark",
+      "match": "\\$[^$]+\\$"
     }
   ]
 }
