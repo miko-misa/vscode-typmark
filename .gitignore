@@ -2,3 +2,5 @@ node_modules/
 out/
 *.vsix
 document/
+.npm-cache/
+package-lock.json
