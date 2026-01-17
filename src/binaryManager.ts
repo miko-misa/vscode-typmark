@@ -5,7 +5,8 @@ import { IncomingMessage } from "http";
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 
-const RELEASES_URL = "https://api.github.com/repos/miko-misa/typmark/releases/latest";
+const RELEASES_URL =
+  "https://api.github.com/repos/miko-misa/typmark/releases/latest";
 
 interface ReleaseAsset {
   name: string;
@@ -23,7 +24,7 @@ export interface CliInfo {
 }
 
 export async function resolveCliPath(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
 ): Promise<CliInfo> {
   const config = vscode.workspace.getConfiguration("typmark");
   const configured = (config.get("cliPath") as string | undefined) ?? "";
@@ -33,12 +34,13 @@ export async function resolveCliPath(
 
   const storagePath = context.globalStorageUri.fsPath;
   await fs.promises.mkdir(storagePath, { recursive: true });
-  const binName = process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
+  const binName =
+    process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
   return { path: path.join(storagePath, binName), managed: true };
 }
 
 export async function ensureCli(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
 ): Promise<CliInfo> {
   const info = await resolveCliPath(context);
   if (!info.managed) {
@@ -61,8 +63,15 @@ export async function ensureCli(
   const latest = await fetchLatestRelease();
   const latestVersion = normalizeVersion(latest.tag_name);
 
-  if (localVersion !== latestVersion) {
-    await downloadLatestCli(context, info.path);
+  if (!localVersion || localVersion !== latestVersion) {
+    const choice = await vscode.window.showInformationMessage(
+      `TypMark CLI update available (${latestVersion}).`,
+      "Update",
+      "Skip",
+    );
+    if (choice == "Update") {
+      await downloadLatestCli(context, info.path);
+    }
   }
 
   return info;
@@ -86,7 +95,7 @@ async function getLocalVersion(cliPath: string): Promise<string> {
 
 async function downloadLatestCli(
   context: vscode.ExtensionContext,
-  destPath: string
+  destPath: string,
 ): Promise<void> {
   const release = await fetchLatestRelease();
   const asset = pickAsset(release.assets);
@@ -97,14 +106,20 @@ async function downloadLatestCli(
   const storagePath = context.globalStorageUri.fsPath;
   await fs.promises.mkdir(storagePath, { recursive: true });
   const archivePath = path.join(storagePath, path.basename(asset.name));
+  const tempDir = path.join(storagePath, `tmp-${Date.now()}`);
+  await fs.promises.mkdir(tempDir, { recursive: true });
 
   await downloadFile(asset.browser_download_url, archivePath);
-  await extractArchive(archivePath, storagePath);
+  await extractArchive(archivePath, tempDir);
 
-  const binName = process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
-  const extractedPath = path.join(storagePath, binName);
-  if (!fs.existsSync(extractedPath)) {
-    throw new Error("Extracted CLI binary not found.");
+  const binName =
+    process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
+  const extractedPath = await findCliBinary(tempDir, binName);
+  if (!extractedPath) {
+    const files = await listFiles(tempDir);
+    throw new Error(
+      `Extracted CLI binary not found. Files: ${files.join(", ")}`,
+    );
   }
 
   await fs.promises.rename(extractedPath, destPath).catch(async () => {
@@ -115,6 +130,8 @@ async function downloadLatestCli(
   if (process.platform !== "win32") {
     await fs.promises.chmod(destPath, 0o755);
   }
+
+  await fs.promises.rm(tempDir, { recursive: true, force: true });
 }
 
 async function fetchLatestRelease(): Promise<ReleaseInfo> {
@@ -124,8 +141,8 @@ async function fetchLatestRelease(): Promise<ReleaseInfo> {
       {
         headers: {
           "User-Agent": "vscode-typmark",
-          Accept: "application/vnd.github+json"
-        }
+          Accept: "application/vnd.github+json",
+        },
       },
       (res: IncomingMessage) => {
         if (!res.statusCode || res.statusCode >= 400) {
@@ -144,7 +161,7 @@ async function fetchLatestRelease(): Promise<ReleaseInfo> {
             reject(err);
           }
         });
-      }
+      },
     );
     req.on("error", reject);
   });
@@ -180,19 +197,37 @@ function normalizeVersion(version: string): string {
 }
 
 async function downloadFile(url: string, dest: string): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    const req = https.get(
-      url,
-      {
-        headers: {
-          "User-Agent": "vscode-typmark",
-          Accept: "application/octet-stream"
+  const maxRedirects = 5;
+  const headers = {
+    "User-Agent": "vscode-typmark",
+    Accept: "application/octet-stream",
+  };
+
+  const download = async (
+    currentUrl: string,
+    redirects: number,
+  ): Promise<void> => {
+    await new Promise<void>((resolve, reject) => {
+      const file = fs.createWriteStream(dest);
+      const req = https.get(currentUrl, { headers }, (res: IncomingMessage) => {
+        const status = res.statusCode ?? 0;
+        if ([301, 302, 303, 307, 308].includes(status)) {
+          const nextUrl = res.headers.location;
+          res.resume();
+          if (!nextUrl) {
+            reject(new Error("Download redirect missing location: " + status));
+            return;
+          }
+          if (redirects <= 0) {
+            reject(new Error("Download redirect limit exceeded."));
+            return;
+          }
+          file.close();
+          void download(nextUrl, redirects - 1).then(resolve, reject);
+          return;
         }
-      },
-      (res: IncomingMessage) => {
-        if (!res.statusCode || res.statusCode >= 400) {
-          reject(new Error(`Download failed: ${res.statusCode}`));
+        if (status >= 400 || status === 0) {
+          reject(new Error("Download failed: " + status));
           return;
         }
         res.pipe(file);
@@ -200,22 +235,27 @@ async function downloadFile(url: string, dest: string): Promise<void> {
           file.close();
           resolve();
         });
-      }
-    );
-    req.on("error", reject);
-  });
+      });
+      req.on("error", reject);
+    });
+  };
+
+  await download(url, maxRedirects);
 }
 
-async function extractArchive(archivePath: string, destDir: string): Promise<void> {
+async function extractArchive(
+  archivePath: string,
+  destDir: string,
+): Promise<void> {
   if (archivePath.endsWith(".zip")) {
     await runCommand(
       "powershell",
       [
         "-NoProfile",
         "-Command",
-        `Expand-Archive -Path '${archivePath}' -DestinationPath '${destDir}' -Force`
+        `Expand-Archive -Path '${archivePath}' -DestinationPath '${destDir}' -Force`,
       ],
-      destDir
+      destDir,
     );
     return;
   }
@@ -226,7 +266,7 @@ async function extractArchive(archivePath: string, destDir: string): Promise<voi
 async function runCommand(
   command: string,
   args: string[],
-  cwd: string
+  cwd: string,
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, { cwd });
@@ -243,4 +283,72 @@ async function runCommand(
     });
     child.on("error", reject);
   });
+}
+
+async function findCliBinary(
+  dir: string,
+  name: string,
+): Promise<string | undefined> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  const candidates: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isFile() && entry.name == name) {
+      return fullPath;
+    }
+    if (entry.isFile() && isLikelyCliBinary(entry.name, name)) {
+      candidates.push(fullPath);
+    }
+    if (entry.isSymbolicLink() && entry.name == name) {
+      return fullPath;
+    }
+    if (entry.isSymbolicLink() && isLikelyCliBinary(entry.name, name)) {
+      candidates.push(fullPath);
+    }
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const nested = await findCliBinary(path.join(dir, entry.name), name);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+  return undefined;
+}
+
+async function listFiles(dir: string): Promise<string[]> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  const out: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isFile()) {
+      out.push(fullPath);
+      continue;
+    }
+    if (entry.isDirectory()) {
+      const nested = await listFiles(fullPath);
+      out.push(...nested);
+    }
+  }
+  return out.slice(0, 20);
+}
+
+function isLikelyCliBinary(entryName: string, expectedName: string): boolean {
+  if (entryName == expectedName) {
+    return true;
+  }
+  if (process.platform === "win32") {
+    return (
+      entryName.toLowerCase().startsWith("typmark") &&
+      entryName.toLowerCase().endsWith(".exe")
+    );
+  }
+  return entryName.startsWith("typmark");
 }
