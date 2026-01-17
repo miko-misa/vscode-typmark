@@ -27,7 +27,7 @@ jobs:
         run: npm run compile
 
       - name: Package VSIX
-        run: npx vsce package
+        run: npx @vscode/vsce package
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
