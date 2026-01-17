@@ -1,0 +1,6 @@
+**/.git/**
+**/node_modules/**
+**/src/**
+**/*.map
+**/tsconfig.json
+**/document/**
