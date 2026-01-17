@@ -3,6 +3,14 @@
 TypMark language support for VS Code.
 Syntax highlighting, diagnostics on save, and a live preview powered by the TypMark CLI.
 
+## TypMark CLI
+This extension relies on the TypMark CLI.
+Use the CLI directly for batch runs, CI, or custom pipelines.
+
+- Repository: https://github.com/miko-misa/typmark
+- Releases: https://github.com/miko-misa/typmark/releases
+
+
 ## Quick start
 1. Download the latest VSIX from GitHub Releases.
 2. Install the VSIX in VS Code.

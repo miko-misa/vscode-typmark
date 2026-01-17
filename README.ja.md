@@ -3,6 +3,14 @@
 VS CodeでTypMarkを扱うための拡張機能です。
 シンタックスハイライト、保存時の診断、TypMark CLIによるプレビューに対応します。
 
+## TypMark CLI
+この拡張は TypMark CLI を利用します。
+CLI を直接使えばバッチ処理やCIにも対応できます。
+
+- リポジトリ: https://github.com/miko-misa/typmark
+- Releases: https://github.com/miko-misa/typmark/releases
+
+
 ## クイックスタート
 1. GitHub Releasesから最新のVSIXをダウンロードします。
 2. VS CodeにVSIXをインストールします。
