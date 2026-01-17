@@ -19,9 +19,12 @@ This extension works with the typmark-cli binary.
 
 - Put typmark-cli on your PATH, or
 - Set the full path in the setting `typmark.cliPath`
+- Leave it empty and the extension will download and manage the CLI
 
 ## Usage
 Open a `.tmd` file to activate TypMark language support.
+Diagnostics run on save.
+Run `TypMark: Show Preview` from the command palette to open the preview.
 
 ## Settings
 - `typmark.cliPath` for the CLI location
