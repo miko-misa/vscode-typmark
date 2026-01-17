@@ -42,6 +42,10 @@ async function runDiagnostics(
       stderr += chunk.toString();
     });
     child.on("close", () => {
+      if (!stderr.trim()) {
+        resolve([]);
+        return;
+      }
       try {
         const parsed = JSON.parse(stderr) as RawDiagnostic[];
         const mapped = parsed.map((diag) => {
@@ -60,8 +64,9 @@ async function runDiagnostics(
           return out;
         });
         resolve(mapped);
-      } catch (err) {
-        reject(err);
+      } catch {
+        vscode.window.showWarningMessage("TypMark diagnostics parse failed.");
+        resolve([]);
       }
     });
     child.on("error", reject);

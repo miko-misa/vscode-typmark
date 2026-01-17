@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import * as https from "https";
+import { IncomingMessage } from "http";
 import { ensureCli } from "./binaryManager";
 import { DiagnosticsManager } from "./diagnostics";
 import { PreviewManager } from "./preview";
@@ -19,6 +21,12 @@ export async function activate(
   context.subscriptions.push({ dispose: () => diagnostics.dispose() });
 
   const preview = new PreviewManager(cliInfo);
+
+  const config = vscode.workspace.getConfiguration("typmark");
+  const checkUpdates = Boolean(config.get("checkExtensionUpdates"));
+  if (checkUpdates) {
+    void checkExtensionUpdates();
+  }
 
   const showPreview = vscode.commands.registerCommand(
     "typmark.showPreview",
@@ -41,3 +49,65 @@ export async function activate(
 }
 
 export function deactivate(): void {}
+
+async function checkExtensionUpdates(): Promise<void> {
+  try {
+    const latest = await fetchLatestExtensionRelease();
+    const latestVersion = normalizeVersion(latest.tag_name);
+        const current = normalizeVersion(vscode.extensions.getExtension("miko-misa.vscode-typmark")?.packageJSON.version ?? "");
+    if (!current || !latestVersion || current == latestVersion) {
+      return;
+    }
+    const choice = await vscode.window.showInformationMessage(
+      `TypMark extension update available (${latestVersion}).`,
+      "Open Release"
+    );
+    if (choice == "Open Release") {
+      await vscode.env.openExternal(vscode.Uri.parse(latest.html_url));
+    }
+  } catch {
+    // ignore update failures
+  }
+}
+
+interface ExtensionRelease {
+  tag_name: string;
+  html_url: string;
+}
+
+async function fetchLatestExtensionRelease(): Promise<ExtensionRelease> {
+  return new Promise((resolve, reject) => {
+    const req = https.get(
+      "https://api.github.com/repos/miko-misa/vscode-typmark/releases/latest",
+      {
+        headers: {
+          "User-Agent": "vscode-typmark",
+          Accept: "application/vnd.github+json"
+        }
+      },
+      (res: IncomingMessage) => {
+        if (!res.statusCode || res.statusCode >= 400) {
+          reject(new Error(`Failed to fetch releases: ${res.statusCode}`));
+          return;
+        }
+        let data = "";
+        res.on("data", (chunk: Buffer) => {
+          data += chunk.toString();
+        });
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data) as ExtensionRelease;
+            resolve(parsed);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+  });
+}
+
+function normalizeVersion(version: string): string {
+  return version.trim().replace(/^v/, "");
+}

@@ -45,6 +45,9 @@
     {
       "name": "markup.math.inline.typmark",
       "match": "\\$[^$]+\\$"
+    },
+    {
+      "include": "text.html.markdown"
     }
   ]
 }
