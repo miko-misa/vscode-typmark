@@ -40,10 +40,54 @@ export async function activate(
   );
   context.subscriptions.push(showPreview);
 
+  const selectTheme = vscode.commands.registerCommand(
+    "typmark.selectPreviewTheme",
+    async () => {
+      const options: Array<{ label: string; value: string }> = [
+        { label: "Auto (follow VS Code)", value: "auto" },
+        { label: "Light", value: "light" },
+        { label: "Dark", value: "dark" }
+      ];
+      const pick = await vscode.window.showQuickPick(
+        options.map((option) => option.label),
+        { placeHolder: "Select TypMark preview theme" }
+      );
+      if (!pick) {
+        return;
+      }
+      const selected = options.find((option) => option.label === pick);
+      if (!selected) {
+        return;
+      }
+      await vscode.workspace
+        .getConfiguration("typmark")
+        .update("previewTheme", selected.value, vscode.ConfigurationTarget.Global);
+      await preview.refresh();
+    }
+  );
+  context.subscriptions.push(selectTheme);
+
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
       void diagnostics.onDidSave(document);
       void preview.onDidSave(document);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async (event) => {
+      if (!event.affectsConfiguration("typmark.previewTheme")) {
+        return;
+      }
+      if (preview.isOpen()) {
+        await preview.refresh();
+        return;
+      }
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== "typmark") {
+        return;
+      }
+      await preview.show(editor.document);
     })
   );
 }
@@ -54,7 +98,9 @@ async function checkExtensionUpdates(): Promise<void> {
   try {
     const latest = await fetchLatestExtensionRelease();
     const latestVersion = normalizeVersion(latest.tag_name);
-        const current = normalizeVersion(vscode.extensions.getExtension("miko-misa.vscode-typmark")?.packageJSON.version ?? "");
+    const current = normalizeVersion(
+      vscode.extensions.getExtension("miko-misa.vscode-typmark")?.packageJSON.version ?? ""
+    );
     if (!current || !latestVersion || current == latestVersion) {
       return;
     }

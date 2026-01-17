@@ -8,6 +8,10 @@ export class PreviewManager {
 
   constructor(private readonly cli: CliInfo) {}
 
+  isOpen(): boolean {
+    return Boolean(this.panel);
+  }
+
   async show(document: vscode.TextDocument): Promise<void> {
     this.currentDoc = document;
     if (!this.panel) {
@@ -37,6 +41,13 @@ export class PreviewManager {
       return;
     }
     await this.render(document);
+  }
+
+  async refresh(): Promise<void> {
+    if (!this.panel || !this.currentDoc) {
+      return;
+    }
+    await this.render(this.currentDoc);
   }
 
   private async render(document: vscode.TextDocument): Promise<void> {
@@ -81,6 +92,12 @@ function runTypmark(
 }
 
 function themeArg(): string {
+  const config = vscode.workspace.getConfiguration("typmark");
+  const selected = (config.get("previewTheme") as string | undefined) ?? "auto";
+  if (selected !== "auto") {
+    return selected;
+  }
+
   const kind = vscode.window.activeColorTheme.kind;
   if (kind === vscode.ColorThemeKind.Dark) {
     return "dark";

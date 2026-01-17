@@ -53,6 +53,16 @@
           "type": "boolean",
           "default": true,
           "description": "Check GitHub Releases for newer VSIX versions and notify."
+        },
+        "typmark.previewTheme": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "light",
+            "dark"
+          ],
+          "description": "Preview theme for TypMark rendering."
         }
       }
     },
@@ -60,8 +70,33 @@
       {
         "command": "typmark.showPreview",
         "title": "TypMark: Show Preview"
+      },
+      {
+        "command": "typmark.selectPreviewTheme",
+        "title": "TypMark: Select Preview Theme"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "typmark.showPreview",
+          "when": "resourceLangId == typmark",
+          "group": "navigation",
+          "icon": "$(open-preview)"
+        },
+        {
+          "command": "typmark.selectPreviewTheme",
+          "when": "resourceLangId == typmark",
+          "group": "navigation@1",
+          "icon": "$(paintcan)"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "typmark.selectPreviewTheme"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",
