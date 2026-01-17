@@ -1,0 +1,67 @@
+{
+  "name": "vscode-typmark",
+  "displayName": "TypMark",
+  "description": "TypMark language support for VS Code",
+  "version": "0.0.1",
+  "publisher": "miko-misa",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:typmark"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "typmark",
+        "aliases": [
+          "TypMark",
+          "typmark"
+        ],
+        "extensions": [
+          ".tmd"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "typmark",
+        "scopeName": "source.typmark",
+        "path": "./syntaxes/typmark.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "TypMark",
+      "properties": {
+        "typmark.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to typmark-cli. Leave empty to use the managed binary."
+        },
+        "typmark.autoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Download and update typmark-cli automatically."
+        },
+        "typmark.checkExtensionUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check GitHub Releases for newer VSIX versions and notify."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
