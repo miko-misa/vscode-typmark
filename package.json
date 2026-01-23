@@ -2,7 +2,7 @@
   "name": "vscode-typmark",
   "displayName": "TypMark",
   "description": "TypMark language support for VS Code",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "miko-misa",
   "engines": {
     "vscode": "^1.85.0"
@@ -104,6 +104,46 @@
           "command": "typmark.showCliVersion"
         }
       ]
+    },
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "string.other.math.typmark",
+            "settings": {
+              "foreground": "#7fe6ff"
+            }
+          },
+          {
+            "scope": "punctuation.definition.math.begin.typmark",
+            "settings": {
+              "foreground": "#7fe6ff",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "punctuation.definition.math.end.typmark",
+            "settings": {
+              "foreground": "#7fe6ff",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "punctuation.definition.math.block.begin.typmark",
+            "settings": {
+              "foreground": "#7fe6ff",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "punctuation.definition.math.block.end.typmark",
+            "settings": {
+              "foreground": "#7fe6ff",
+              "fontStyle": "bold"
+            }
+          }
+        ]
+      }
     }
   },
   "scripts": {
