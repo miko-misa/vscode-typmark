@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as https from "https";
 import { IncomingMessage } from "http";
-import { ensureCli } from "./binaryManager";
+import { ensureCli, getCliVersion } from "./binaryManager";
 import { DiagnosticsManager } from "./diagnostics";
 import { PreviewManager } from "./preview";
 
@@ -40,6 +40,19 @@ export async function activate(
   );
   context.subscriptions.push(showPreview);
 
+  const showCliVersion = vscode.commands.registerCommand(
+    "typmark.showCliVersion",
+    async () => {
+      const version = await getCliVersion(cliInfo.path);
+      if (!version) {
+        vscode.window.showWarningMessage("TypMark CLI version unavailable.");
+        return;
+      }
+      vscode.window.showInformationMessage(`TypMark CLI ${version}`);
+    }
+  );
+  context.subscriptions.push(showCliVersion);
+
   const selectTheme = vscode.commands.registerCommand(
     "typmark.selectPreviewTheme",
     async () => {
@@ -73,6 +86,13 @@ export async function activate(
       void preview.onDidSave(document);
     })
   );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection((event) => {
+      preview.onEditorSelection(event.textEditor);
+    })
+  );
+
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (event) => {

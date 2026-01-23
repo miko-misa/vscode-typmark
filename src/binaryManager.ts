@@ -92,46 +92,72 @@ async function getLocalVersion(cliPath: string): Promise<string> {
     });
   });
 }
+export async function getCliVersion(cliPath: string): Promise<string> {
+  return getLocalVersion(cliPath);
+}
+
 
 async function downloadLatestCli(
   context: vscode.ExtensionContext,
   destPath: string,
 ): Promise<void> {
-  const release = await fetchLatestRelease();
-  const asset = pickAsset(release.assets);
-  if (!asset) {
-    throw new Error("No matching release asset for this platform.");
-  }
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "TypMark CLI",
+      cancellable: false,
+    },
+    async (progress) => {
+      progress.report({ message: "Checking latest release" });
+      const release = await fetchLatestRelease();
+      const asset = pickAsset(release.assets);
+      if (!asset) {
+        throw new Error("No matching release asset for this platform.");
+      }
 
-  const storagePath = context.globalStorageUri.fsPath;
-  await fs.promises.mkdir(storagePath, { recursive: true });
-  const archivePath = path.join(storagePath, path.basename(asset.name));
-  const tempDir = path.join(storagePath, `tmp-${Date.now()}`);
-  await fs.promises.mkdir(tempDir, { recursive: true });
+      const storagePath = context.globalStorageUri.fsPath;
+      await fs.promises.mkdir(storagePath, { recursive: true });
+      const archivePath = path.join(storagePath, path.basename(asset.name));
+      const tempDir = path.join(storagePath, `tmp-${Date.now()}`);
+      await fs.promises.mkdir(tempDir, { recursive: true });
 
-  await downloadFile(asset.browser_download_url, archivePath);
-  await extractArchive(archivePath, tempDir);
+      progress.report({ message: `Downloading ${asset.name}` });
+      await downloadFile(asset.browser_download_url, archivePath);
 
-  const binName =
-    process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
-  const extractedPath = await findCliBinary(tempDir, binName);
-  if (!extractedPath) {
-    const files = await listFiles(tempDir);
-    throw new Error(
-      `Extracted CLI binary not found. Files: ${files.join(", ")}`,
-    );
-  }
+      progress.report({ message: "Extracting archive" });
+      await extractArchive(archivePath, tempDir);
 
-  await fs.promises.rename(extractedPath, destPath).catch(async () => {
-    await fs.promises.copyFile(extractedPath, destPath);
-    await fs.promises.unlink(extractedPath);
-  });
+      const binName =
+        process.platform === "win32" ? "typmark-cli.exe" : "typmark-cli";
+      const extractedPath = await findCliBinary(tempDir, binName);
+      if (!extractedPath) {
+        const files = await listFiles(tempDir);
+        throw new Error(
+          `Extracted CLI binary not found. Files: ${files.join(", ")}`,
+        );
+      }
 
-  if (process.platform !== "win32") {
-    await fs.promises.chmod(destPath, 0o755);
-  }
+      progress.report({ message: "Installing CLI" });
+      await fs.promises.rename(extractedPath, destPath).catch(async () => {
+        await fs.promises.copyFile(extractedPath, destPath);
+        await fs.promises.unlink(extractedPath);
+      });
 
-  await fs.promises.rm(tempDir, { recursive: true, force: true });
+      if (process.platform !== "win32") {
+        await fs.promises.chmod(destPath, 0o755);
+      }
+
+      progress.report({ message: "Cleaning up" });
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
+
+      const version = normalizeVersion(release.tag_name);
+      if (version) {
+        void vscode.window.showInformationMessage(
+          `TypMark CLI installed (${version}).`,
+        );
+      }
+    },
+  );
 }
 
 async function fetchLatestRelease(): Promise<ReleaseInfo> {

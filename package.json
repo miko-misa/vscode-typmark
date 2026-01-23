@@ -2,7 +2,7 @@
   "name": "vscode-typmark",
   "displayName": "TypMark",
   "description": "TypMark language support for VS Code",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "miko-misa",
   "engines": {
     "vscode": "^1.85.0"
@@ -13,7 +13,8 @@
   "main": "./out/extension.js",
   "activationEvents": [
     "onLanguage:typmark",
-    "onCommand:typmark.showPreview"
+    "onCommand:typmark.showPreview",
+    "onCommand:typmark.showCliVersion"
   ],
   "contributes": {
     "languages": [
@@ -74,6 +75,10 @@
       {
         "command": "typmark.selectPreviewTheme",
         "title": "TypMark: Select Preview Theme"
+      },
+      {
+        "command": "typmark.showCliVersion",
+        "title": "TypMark: Show CLI Version"
       }
     ],
     "menus": {
@@ -94,6 +99,9 @@
       "commandPalette": [
         {
           "command": "typmark.selectPreviewTheme"
+        },
+        {
+          "command": "typmark.showCliVersion"
         }
       ]
     }
