@@ -2,7 +2,7 @@
   "name": "vscode-typmark",
   "displayName": "TypMark",
   "description": "TypMark language support for VS Code",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "miko-misa",
   "engines": {
     "vscode": "^1.85.0"
@@ -34,7 +34,10 @@
       {
         "language": "typmark",
         "scopeName": "source.typmark",
-        "path": "./syntaxes/typmark.tmLanguage.json"
+        "path": "./syntaxes/typmark.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.typst": "typst"
+        }
       }
     ],
     "configuration": {
@@ -148,13 +151,15 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
+    "pretest": "npm run compile",
+    "test": "node --test test/*.test.cjs",
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "typescript": "^5.3.0",
     "@types/node": "^20.11.0",
-    "@vscode/vsce": "^2.24.0"
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.3.0"
   },
   "repository": {
     "type": "git",

@@ -23,6 +23,9 @@
           "include": "#listItem"
         },
         {
+          "include": "#fencedTypst"
+        },
+        {
           "include": "#fencedCode"
         },
         {
@@ -117,8 +120,18 @@
         }
       ]
     },
-    "fencedCode": {
-      "begin": "^\\s{0,3}(```+|~~~+)\\s*(?:([A-Za-z0-9_-]+))?\\s*(\\{[^}]*\\})?\\s*$",
+    "fencedTypst": {
+      "patterns": [
+        {
+          "include": "#fencedTypstBacktick"
+        },
+        {
+          "include": "#fencedTypstTilde"
+        }
+      ]
+    },
+    "fencedTypstBacktick": {
+      "begin": "^\\s{0,3}(`{3,})\\s*(typst)(?=\\s|$)\\s*(.*)?$",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.fence.markdown"
@@ -130,9 +143,92 @@
           "name": "meta.block.attributes.typmark"
         }
       },
-      "end": "^\\s{0,3}\\1\\s*$",
+      "end": "^\\s{0,3}\\1`*\\s*$",
       "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.fence.markdown"
+        }
+      },
+      "contentName": "meta.embedded.block.typst",
+      "patterns": [
+        {
+          "include": "source.typst"
+        }
+      ]
+    },
+    "fencedTypstTilde": {
+      "begin": "^\\s{0,3}(~{3,})\\s*(typst)(?=\\s|$)\\s*(.*)?$",
+      "beginCaptures": {
         "1": {
+          "name": "punctuation.definition.fence.markdown"
+        },
+        "2": {
+          "name": "fenced_code.block.language"
+        },
+        "3": {
+          "name": "meta.block.attributes.typmark"
+        }
+      },
+      "end": "^\\s{0,3}\\1~*\\s*$",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.fence.markdown"
+        }
+      },
+      "contentName": "meta.embedded.block.typst",
+      "patterns": [
+        {
+          "include": "source.typst"
+        }
+      ]
+    },
+    "fencedCode": {
+      "patterns": [
+        {
+          "include": "#fencedCodeBacktick"
+        },
+        {
+          "include": "#fencedCodeTilde"
+        }
+      ]
+    },
+    "fencedCodeBacktick": {
+      "begin": "^\\s{0,3}(`{3,})\\s*(?:([^\\s]+)(?:\\s+(.*))?)?\\s*$",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.fence.markdown"
+        },
+        "2": {
+          "name": "fenced_code.block.language"
+        },
+        "3": {
+          "name": "meta.block.attributes.typmark"
+        }
+      },
+      "end": "^\\s{0,3}\\1`*\\s*$",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.fence.markdown"
+        }
+      },
+      "contentName": "markup.raw.block.markdown"
+    },
+    "fencedCodeTilde": {
+      "begin": "^\\s{0,3}(~{3,})\\s*(?:([^\\s]+)(?:\\s+(.*))?)?\\s*$",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.fence.markdown"
+        },
+        "2": {
+          "name": "fenced_code.block.language"
+        },
+        "3": {
+          "name": "meta.block.attributes.typmark"
+        }
+      },
+      "end": "^\\s{0,3}\\1~*\\s*$",
+      "endCaptures": {
+        "0": {
           "name": "punctuation.definition.fence.markdown"
         }
       },

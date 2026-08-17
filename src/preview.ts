@@ -1,6 +1,7 @@
-import { spawn } from "child_process";
+import { randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
 import * as vscode from "vscode";
-import { CliInfo } from "./binaryManager";
+import type { CliInfo } from "./binaryManager";
 
 export class PreviewManager {
   private panel: vscode.WebviewPanel | undefined;
@@ -8,6 +9,7 @@ export class PreviewManager {
   private pendingScrollLine: number | null = null;
   private scrollTimer: NodeJS.Timeout | undefined;
   private warnedMissingSourceMap = false;
+  private renderGeneration = 0;
 
   constructor(private readonly cli: CliInfo) {}
 
@@ -32,6 +34,7 @@ export class PreviewManager {
       this.panel.onDidDispose(() => {
         this.panel = undefined;
         this.currentDoc = undefined;
+        this.renderGeneration += 1;
         if (this.scrollTimer) {
           clearTimeout(this.scrollTimer);
           this.scrollTimer = undefined;
@@ -40,7 +43,7 @@ export class PreviewManager {
     }
 
     await this.render(document);
-    this.panel.reveal(vscode.ViewColumn.Beside);
+    this.panel?.reveal(vscode.ViewColumn.Beside);
   }
 
   async onDidSave(document: vscode.TextDocument): Promise<void> {
@@ -87,22 +90,28 @@ export class PreviewManager {
   }
 
   private async render(document: vscode.TextDocument): Promise<void> {
-    if (!this.panel) {
+    const panel = this.panel;
+    if (!panel) {
       return;
     }
+    const generation = ++this.renderGeneration;
     const html = await runTypmark(
       this.cli.path,
       document.getText(),
       themeArg()
     );
+    if (this.panel !== panel || generation !== this.renderGeneration) {
+      return;
+    }
     const sourceMapCount = (html.match(/data-tm-range=/g) || []).length;
-    if (sourceMapCount == 0 && !this.warnedMissingSourceMap) {
+    if (sourceMapCount === 0 && !this.warnedMissingSourceMap) {
       this.warnedMissingSourceMap = true;
       void vscode.window.showWarningMessage(
         "TypMark CLI did not output source maps. Update the CLI to enable preview sync.",
       );
     }
-    this.panel.webview.html = injectPreviewScript(html);
+    const nonce = randomBytes(16).toString("hex");
+    panel.webview.html = injectPreviewScript(html, nonce);
   }
 
   private async handleWebviewMessage(message: unknown): Promise<void> {
@@ -135,7 +144,13 @@ function runTypmark(
   theme: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cliPath, ["--render", "--theme", theme, "--source-map"]);
+    const child = spawn(cliPath, [
+      "--render",
+      "--sanitized",
+      "--theme",
+      theme,
+      "--source-map"
+    ]);
     let out = "";
     let err = "";
     child.stdout.on("data", (chunk: Buffer) => {
@@ -157,7 +172,20 @@ function runTypmark(
   });
 }
 
-function injectPreviewScript(html: string): string {
+export function injectPreviewScript(html: string, nonce: string): string {
+  const policy = [
+    "default-src 'none'",
+    "img-src https: data:",
+    "font-src https: data:",
+    "style-src 'unsafe-inline'",
+    `script-src 'nonce-${nonce}'`,
+    "base-uri 'none'",
+    "form-action 'none'"
+  ].join("; ");
+  const csp = `<meta http-equiv="Content-Security-Policy" content="${policy};">`;
+  const securedHtml = html
+    .replace(/<script(?=\s|>)/gi, `<script nonce="${nonce}"`)
+    .replace(/<head([^>]*)>/i, `<head$1>\n${csp}`);
   const script = `
 <style>
   .TypMark-scroll-highlight {
@@ -175,7 +203,7 @@ function injectPreviewScript(html: string): string {
     }
   }
 </style>
-<script>
+<script nonce="${nonce}">
 (function () {
   const vscode = acquireVsCodeApi();
   let elements = [];
@@ -331,15 +359,15 @@ function injectPreviewScript(html: string): string {
 })();
 </script>`;
   const closingBody = "</body>";
-  const index = html.lastIndexOf(closingBody);
+  const index = securedHtml.lastIndexOf(closingBody);
   if (index === -1) {
-    return html + script;
+    return securedHtml + script;
   }
   return (
-    html.slice(0, index) +
+    securedHtml.slice(0, index) +
     script +
     closingBody +
-    html.slice(index + closingBody.length)
+    securedHtml.slice(index + closingBody.length)
   );
 }
 
@@ -382,10 +410,16 @@ function themeArg(): string {
   }
 
   const kind = vscode.window.activeColorTheme.kind;
-  if (kind === vscode.ColorThemeKind.Dark) {
+  if (
+    kind === vscode.ColorThemeKind.Dark ||
+    kind === vscode.ColorThemeKind.HighContrast
+  ) {
     return "dark";
   }
-  if (kind === vscode.ColorThemeKind.Light) {
+  if (
+    kind === vscode.ColorThemeKind.Light ||
+    kind === vscode.ColorThemeKind.HighContrastLight
+  ) {
     return "light";
   }
   return "auto";

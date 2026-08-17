@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import * as https from "https";
-import { IncomingMessage } from "http";
+import * as https from "node:https";
+import type { IncomingMessage } from "node:http";
 import { ensureCli, getCliVersion } from "./binaryManager";
 import { DiagnosticsManager } from "./diagnostics";
 import { PreviewManager } from "./preview";
@@ -75,7 +75,6 @@ export async function activate(
       await vscode.workspace
         .getConfiguration("typmark")
         .update("previewTheme", selected.value, vscode.ConfigurationTarget.Global);
-      await preview.refresh();
     }
   );
   context.subscriptions.push(selectTheme);
@@ -83,7 +82,7 @@ export async function activate(
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
       void diagnostics.onDidSave(document);
-      void preview.onDidSave(document);
+      void preview.onDidSave(document).catch(reportPreviewError);
     })
   );
 
@@ -95,24 +94,34 @@ export async function activate(
 
 
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(async (event) => {
-      if (!event.affectsConfiguration("typmark.previewTheme")) {
-        return;
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (
+        event.affectsConfiguration("typmark.previewTheme") &&
+        preview.isOpen()
+      ) {
+        void preview.refresh().catch(reportPreviewError);
       }
-      if (preview.isOpen()) {
-        await preview.refresh();
-        return;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      const selected = vscode.workspace
+        .getConfiguration("typmark")
+        .get<string>("previewTheme", "auto");
+      if (selected === "auto" && preview.isOpen()) {
+        void preview.refresh().catch(reportPreviewError);
       }
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== "typmark") {
-        return;
-      }
-      await preview.show(editor.document);
     })
   );
 }
 
 export function deactivate(): void {}
+
+function reportPreviewError(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  void vscode.window.showErrorMessage(`TypMark preview failed: ${message}`);
+}
 
 async function checkExtensionUpdates(): Promise<void> {
   try {
@@ -121,14 +130,14 @@ async function checkExtensionUpdates(): Promise<void> {
     const current = normalizeVersion(
       vscode.extensions.getExtension("miko-misa.vscode-typmark")?.packageJSON.version ?? ""
     );
-    if (!current || !latestVersion || current == latestVersion) {
+    if (!current || !latestVersion || current === latestVersion) {
       return;
     }
     const choice = await vscode.window.showInformationMessage(
       `TypMark extension update available (${latestVersion}).`,
       "Open Release"
     );
-    if (choice == "Open Release") {
+    if (choice === "Open Release") {
       await vscode.env.openExternal(vscode.Uri.parse(latest.html_url));
     }
   } catch {
